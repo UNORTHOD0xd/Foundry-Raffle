@@ -1,6 +1,8 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.19;
 
+import {VRFConsumerBaseV2Plus} from "@chainlink/contracts@1.1.1/src/v0.8/vrf/dev/VRFConsumerBaseV2Plus.sol";
+
 // Imports
 // Errors
 // Interfaces, libraries, contracts
@@ -34,17 +36,22 @@ contract Raffle {
 
     /* State Variables */
     uint256 private immutable I_ENTRANCEFEE;
+    // @dev The duration of the lottery in seconds 
+    uint256 private immutable I_INTERVAL;
     address payable[] private s_players;
+    uint256 private s_lastTimeStamp;
 
     /* Events */
     event RaffleEntered(address indexed s_players);
 
 
-    constructor(uint256 enteranceFee) {
+    constructor(uint256 enteranceFee, uint256 interval) {
         I_ENTRANCEFEE = enteranceFee;
+        I_INTERVAL = interval;
+        s_lastTimeStamp = block.timestamp;
     }
 
-    function enterRaffle() public payable{
+    function enterRaffle() external payable{
         // require(msg.value >= I_ENTRANCEFEE, "Not enough ETH sent!");
         // require(msg.value >= I_ENTRANCEFEE, SendMoreToEnterRaffle());
         if (msg.value < I_ENTRANCEFEE) {
@@ -54,7 +61,28 @@ contract Raffle {
         emit RaffleEntered(msg.sender);
     }
 
-    function pickWinner() public {}
+    // 1. Get a random number
+    // 2. Use random number to pick a player
+    // 3. Be automatically called
+    function pickWinner() external {
+        // check to see if enough time has passed.
+        if ((block.timestamp - s_lastTimeStamp) < I_INTERVAL) {
+            revert();
+        }
+        requestId = s_vrfCoordinator.requestRandomWords(
+            VRFV2PlusClient.RandomWordsRequest({
+                keyHash: s_keyHash,
+                subId: s_subscriptionId,
+                requestConfirmations: requestConfirmations,
+                callbackGasLimit: callbackGaslimit,
+                numWords: numWords,
+                extraArgs: VRFV2PlusClient._argsToBytes(
+                    //Set native payment to true to pay for VRF requests with Sepolia ETH instead
+                    VRFV2PlusClient.ExtraArgsV1((nativePayments: false))
+                )
+            })
+        );
+    }
 
     /**
      * Getter Functions
