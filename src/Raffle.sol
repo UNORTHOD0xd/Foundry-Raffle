@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.19;
 
-import {VRFConsumerBaseV2Plus} from "@chainlink/contracts@1.1.1/src/v0.8/vrf/dev/VRFConsumerBaseV2Plus.sol";
+import {VRFConsumerBaseV2Plus} from "@chainlink/contracts/src/v0.8/vrf/dev/VRFConsumerBaseV2Plus.sol";
 
 // Imports
 // Errors
@@ -29,7 +29,7 @@ import {VRFConsumerBaseV2Plus} from "@chainlink/contracts@1.1.1/src/v0.8/vrf/dev
  * @dev Implements Chainlink VRFv2.5
  */
 
-contract Raffle {
+contract Raffle is VRFConsumerBaseV2Plus {
 
     /* Errors */
     error Raffle__SendMoreToEnterRaffle();
@@ -45,7 +45,8 @@ contract Raffle {
     event RaffleEntered(address indexed s_players);
 
 
-    constructor(uint256 enteranceFee, uint256 interval) {
+constructor(uint256 enteranceFee, uint256 interval, address vrfcoordinatorV2)
+        VRFConsumerBaseV2Plus(vrfcoordinatorV2) {
         I_ENTRANCEFEE = enteranceFee;
         I_INTERVAL = interval;
         s_lastTimeStamp = block.timestamp;
@@ -69,7 +70,7 @@ contract Raffle {
         if ((block.timestamp - s_lastTimeStamp) < I_INTERVAL) {
             revert();
         }
-        requestId = s_vrfCoordinator.requestRandomWords(
+        /*requestId = s_vrfCoordinator.requestRandomWords(
             VRFV2PlusClient.RandomWordsRequest({
                 keyHash: s_keyHash,
                 subId: s_subscriptionId,
@@ -81,8 +82,11 @@ contract Raffle {
                     VRFV2PlusClient.ExtraArgsV1((nativePayments: false))
                 )
             })
-        );
+        ); */
     }
+
+    function fulfillRandomWords(uint256 _requestId, uint256[] calldata randomWords) internal override 
+    {}
 
     /**
      * Getter Functions
