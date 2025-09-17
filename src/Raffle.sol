@@ -2,7 +2,7 @@
 pragma solidity 0.8.19;
 
 import {VRFConsumerBaseV2Plus} from "@chainlink/contracts/src/v0.8/vrf/dev/VRFConsumerBaseV2Plus.sol";
-import {VRFV2PlusClient} from "chainlink-brownie-contracts/contracts/src/v0.8/vrf/dev/libraries/VRFV2PlusClient.sol";
+import {VRFV2PlusClient} from "@chainlink/contracts/src/v0.8/vrf/dev/libraries/VRFV2PlusClient.sol";
 
 // Imports
 // Errors
@@ -36,6 +36,7 @@ contract Raffle is VRFConsumerBaseV2Plus {
     error Raffle__SendMoreToEnterRaffle();
     error Raffle__TransferFailed();
     error Raffle__RaffleNotOpen();
+    error Raffle__UpkeepNotNeeded(uint256 currentBalance, uint256 numPlayers, uint256 raffleState);
 
     /* Type Declarations */
     enum RaffleState {
@@ -46,11 +47,11 @@ contract Raffle is VRFConsumerBaseV2Plus {
     /* State Variables */
     uint16 private constant REQUEST_CONFIRMATIONS = 3;
     uint32 private constant NUM_WORDS = 1;
-    uint256 private immutable i_entranceFee;
-    uint256 private immutable i_interval;
-    bytes32 private immutable i_keyHash;
-    uint64 private immutable i_subscriptionId;
-    uint32 private immutable i_callbackGaslimit;
+    uint256 private immutable I_ENTRANCE_FEE;
+    uint256 private immutable I_INTERVAL;
+    bytes32 private immutable I_KEY_HASH;
+    uint64 private immutable I_SUBSCRIPTION_ID;
+    uint32 private immutable I_CALLBACK_GASLIMIT;
     address payable[] private s_players;
     uint256 private s_lastTimeStamp;
     address private s_recentWinner;
@@ -64,25 +65,29 @@ contract Raffle is VRFConsumerBaseV2Plus {
 
 constructor(uint256 enteranceFee, 
             uint256 interval, 
-            address vrfcoordinatorV2,
+            address vrfCoordinatorV2,
             bytes32 gasLane,
             uint64 subscriptionId,
             uint32 callbackGaslimit)
-        VRFConsumerBaseV2Plus(vrfcoordinator) {
-        i_entranceFee = enteranceFee;
-        i_interval = interval;
-        i_keyHash = gasLane;
-        i_subscriptionId = subscriptionId;
-        i_callbackGaslimit = callbackGaslimit;
+        VRFConsumerBaseV2Plus(vrfCoordinatorV2) {
+        I_ENTRANCE_FEE = enteranceFee;
+        I_INTERVAL = interval;
+        I_KEY_HASH = gasLane;
+        I_SUBSCRIPTION_ID = subscriptionId;
+        I_CALLBACK_GASLIMIT = callbackGaslimit;
         
         s_raffleState = RaffleState.OPEN;
         s_lastTimeStamp = block.timestamp;
     }
 
+    /**
+     * @notice This function is used to enter the raffle
+     * @dev The function is payable
+     */
     function enterRaffle() external payable{
         // require(msg.value >= i_entranceFee, "Not enough ETH sent!");
         // require(msg.value >= i_entranceFee, SendMoreToEnterRaffle());
-        if (msg.value < i_entranceFee) {
+        if (msg.value < I_ENTRANCE_FEE) {
             revert Raffle__SendMoreToEnterRaffle();
         } // Most gas efficient error
         if (s_raffleState != RaffleState.OPEN) {
@@ -92,34 +97,61 @@ constructor(uint256 enteranceFee,
         emit RaffleEntered(msg.sender);
     }
 
-    // 1. Get a random number
-    // 2. Use random number to pick a player
-    // 3. Be automatically called
-    function pickWinner() external {
-        // check to see if enough time has passed.
-        if ((block.timestamp - s_lastTimeStamp) < i_interval) {
-            revert();
+
+    /**
+     * @dev This is the function that the Chainlink Keeper nodes call
+     * they look for `upkeepNeeded` to return True.
+     * the following should be true for this to return true:
+     * 1. The time interval has passed between raffle runs.
+     * 2. The lottery is open.
+     * 3. The contract has ETH.
+     * 4. Implicity, your subscription is funded with LINK.
+     */
+    function checkUpkeep(bytes memory /* checkData */) 
+    public
+    view
+    returns (bool upkeepNeeded, bytes memory /* performData */) 
+    {
+        bool isOpen = s_raffleState == RaffleState.OPEN;
+        bool timePassed = ((block.timestamp - s_lastTimeStamp) >= I_INTERVAL); 
+        bool hasPlayers = s_players.length > 0;
+        bool hasBalance = address(this).balance > 0;
+        upkeepNeeded = isOpen && timePassed && hasPlayers && hasBalance;
+        return (upkeepNeeded, "0x0"); 
+    }
+
+    /**
+     * @dev Once `checkUpkeep` is returning `true`, this function is called
+     * and it kicks off a Chainlink VRF call to get a random winner.
+     */
+
+    function performUpkeep(bytes calldata /* performData */ ) external
+    {
+        (bool upkeepNeeded,) = checkUpkeep("");
+        // require(upkeepNeeded, "Upkeep not needed");
+        if (!upkeepNeeded) {
+            revert Raffle__UpkeepNotNeeded(address(this).balance, s_players.length, uint256(s_raffleState));
         }
 
         s_raffleState = RaffleState.CALCULATING;
          // Will revert if subscription is not set and funded.
         VRFV2PlusClient.RandomWordsRequest memory request = VRFV2PlusClient.RandomWordsRequest(
             {
-                keyHash: i_keyHash,
-                subId: i_subscriptionId,
+                keyHash: I_KEY_HASH,
+                subId: I_SUBSCRIPTION_ID,
                 requestConfirmations: REQUEST_CONFIRMATIONS,
-                callbackGasLimit: i_callbackGaslimit,
+                callbackGasLimit: I_CALLBACK_GASLIMIT,
                 numWords: NUM_WORDS,
                 extraArgs: VRFV2PlusClient._argsToBytes(
                     //Set native payment to true to pay for VRF requests with Sepolia ETH instead
-                    VRFV2PlusClient.ExtraArgsV1((nativePayments: false))
+                    VRFV2PlusClient.ExtraArgsV1({nativePayment: false})
                 )
             }
         );
-        uint256 requestId = s_vrfcoordinator.requestRandomWords(request);  
+        s_vrfCoordinator.requestRandomWords(request);  
     }
 
-    function fulfillRandomWords(uint256 _requestId, uint256[] calldata randomWords) internal override 
+    function fulfillRandomWords(uint256, /* requestId */ uint256[] calldata randomWords) internal override 
     {
         uint256 indexOfWinner = randomWords[0] % s_players.length;
         address payable recentWinner = s_players[indexOfWinner];
@@ -138,6 +170,6 @@ constructor(uint256 enteranceFee,
      * Getter Functions
      */
     function getEntranceFee() external view returns (uint256) {
-        return i_entranceFee;
+        return I_ENTRANCE_FEE;
     }
 }
