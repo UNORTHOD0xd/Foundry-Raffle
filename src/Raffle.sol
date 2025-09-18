@@ -172,4 +172,8 @@ constructor(uint256 enteranceFee,
     function getEntranceFee() external view returns (uint256) {
         return I_ENTRANCE_FEE;
     }
+
+    function getRaffleState() external view returns (RaffleState) {
+        return s_raffleState;
+    }
 }
