@@ -30,9 +30,52 @@ contract RaffleTest is Test {
         gasLane = config.gasLane;
         subscriptionId = config.subscriptionId;
         callbackGasLimit = config.callbackGasLimit;
+
+        vm.deal(PLAYER, STARTING_PLAYER_BALANCE); // Fund the player with 10 ether
     }
 
     function testRaffleInitializesInOpenState() public view {
         assert(raffle.getRaffleState() == Raffle.RaffleState.OPEN);
+    }
+
+    function testRaffleRevertsWhenYouDontPayEnough() public {
+        // Arrange
+        vm.prank(PLAYER);
+        // Act & Assert
+        vm.expectRevert(Raffle.Raffle__SendMoreToEnterRaffle.selector);
+        raffle.enterRaffle();
+    }
+
+    function testRaffleRecordsPlayerWhenTheyEnter() public {
+        // Arrange
+        vm.prank(PLAYER);
+        raffle.enterRaffle{value: entranceFee}();
+        // Act
+        address playerRecorded = raffle.getPlayer(0);
+        // Assert
+        assert(playerRecorded == PLAYER);
+    }
+
+    function testRaffleEmitsEventOnEntrance() public {
+        // Arrange
+        vm.prank(PLAYER);
+        // Act 
+        vm.expectEmit(true, false, false, false, address(raffle)); // Expect the RaffleEntered event to be emitted
+        emit RaffleEntered(PLAYER);
+        // Assert
+        raffle.enterRaffle{value: entranceFee}();
+    } 
+
+    function testDontAllowPlayersToEnterWhenRaffleIsCalculating() public {
+        // Arrange
+        vm.prank(PLAYER);
+        raffle.enterRaffle{value: entranceFee}();
+        vm.warp(block.timestamp + interval + 1); // warp time
+        vm.roll(block.number + 1); 
+        raffle.performUpkeep(""); // changes the state to calculating
+        // Act & Assert
+        vm.prank(PLAYER);
+        vm.expectRevert(Raffle.Raffle__RaffleNotOpen.selector);
+        raffle.enterRaffle{value: entranceFee}();
     }
 }
