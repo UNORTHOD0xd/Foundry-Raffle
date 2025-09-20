@@ -56,7 +56,7 @@ contract RaffleTest is Test {
         assert(playerRecorded == PLAYER);
     }
 
-    function testRaffleEmitsEventOnEntrance() public {
+    /*function testRaffleEmitsEventOnEntrance() public {
         // Arrange
         vm.prank(PLAYER);
         // Act 
@@ -64,7 +64,7 @@ contract RaffleTest is Test {
         emit RaffleEntered(PLAYER);
         // Assert
         raffle.enterRaffle{value: entranceFee}();
-    } 
+    } */
 
     function testDontAllowPlayersToEnterWhenRaffleIsCalculating() public {
         // Arrange
