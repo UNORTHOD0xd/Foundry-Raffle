@@ -6,6 +6,14 @@ import {HelperConfig, CodeConstants} from "./HelperConfig.s.sol";
 import {VRFCoordinatorV2_5Mock} from "@chainlink/contracts/src/v0.8/vrf/mocks/VRFCoordinatorV2_5Mock.sol";
 import {LinkToken} from "../test/mocks/LinkToken.sol";
 import {DevOpsTools} from "lib/foundry-devops/src/DevOpsTools.sol";
+import {Raffle} from "../src/Raffle.sol";
+
+/**
+ * @notice This file contains three contracts to interact with Chainlink VRF:
+ * 1. CreateSubscription: Creates a new VRF subscription.
+ * 2. FundSubscription: Funds the created subscription with LINK tokens.
+ * 3. AddConsumer: Adds a consumer contract to the subscription.
+ */
 
 
 contract CreateSubscription is Script, CodeConstants{

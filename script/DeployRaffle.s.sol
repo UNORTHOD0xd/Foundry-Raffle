@@ -6,6 +6,10 @@ import { Raffle } from "../src/Raffle.sol";
 import { HelperConfig } from "./HelperConfig.s.sol";
 import { CreateSubscription, FundSubscription, AddConsumer } from "./Interactions.s.sol";
 
+/**
+ * @notice This script deploys the Raffle contract using network-specific configurations
+ * @dev It retrieves configurations from HelperConfig and handles subscription creation and funding if necessary
+ */
 contract DeployRaffle is Script {
     function run() public {
         deployContract();
@@ -16,7 +20,7 @@ contract DeployRaffle is Script {
         // Retrieve the network configuration based on the current chain ID
         HelperConfig.NetworkConfig memory config = helperConfig.getConfig();
 
-        if (config.subscriptionId == 0) {
+         if (config.subscriptionId == 0) {
             // create subscriptionId logic
             CreateSubscription createSubscription = new CreateSubscription(); // Instantiate the CreateSubscription contract
             (config.subscriptionId, config.vrfCoordinator) = 
