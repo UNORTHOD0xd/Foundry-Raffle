@@ -191,5 +191,41 @@ contract RaffleTest is Test {
         VRFCoordinatorV2_5Mock(vrfCoordinator).fulfillRandomWords(0, address(raffle));
     } // intro to fuzz testing where randomRequestId is any uint256 allowing us to test edge cases.
 
-    
+    function testFullfillRandomWordsPicksAWinnerResetsAndSendsMoney() public raffleEntered {
+        // Arrange
+        uint256 additionalEntrants = 4; // we will have 5 players in total
+        uint256 startingIndex = 1;
+        address expectedWinner = address(1); // we will assume that the winner is address(1)
+
+        for (uint256 i = startingIndex; i < startingIndex + additionalEntrants; i++) {
+            address player = address(uint160(i)); // convert uint256 to address
+            hoax(player, 1 ether); // give the player some ether
+            raffle.enterRaffle{value: entranceFee}();
+        }
+        uint256 startingTimeStamp = raffle.getLastTimeStamp();
+        uint256 winnerStartingBalance = expectedWinner.balance;
+
+        // Act
+        vm.recordLogs(); // record logs to extract the requestId
+        raffle.performUpkeep(""); // emits requestId
+        Vm.Log[] memory entries = vm.getRecordedLogs();
+        bytes32 requestId = entries[1].topics[1];
+
+        // Pretend to be the Chainlink VRF node and call fulfillRandomWords
+        VRFCoordinatorV2_5Mock(vrfCoordinator).fulfillRandomWords(uint256(requestId), address(raffle));
+
+        // Assert
+        address recentWinner = raffle.getRecentWinner();
+        Raffle.RaffleState raffleState = raffle.getRaffleState();
+        uint256 endingTimeStamp = raffle.getLastTimeStamp();
+        uint256 winnerBalance = recentWinner.balance;
+        uint256 prize = entranceFee * (additionalEntrants + 1); // (additionalEntrants + 1) because we have to include the original player from the modifier
+
+        assert(recentWinner == expectedWinner);
+        assert(uint256(raffleState) == 0);
+        assert(endingTimeStamp > startingTimeStamp);
+        assert(winnerBalance == winnerStartingBalance + prize);
+        assert(address(recentWinner).balance == winnerStartingBalance + prize); // check if the recent winner's balance is equal to the prize
+
+    }
 }
