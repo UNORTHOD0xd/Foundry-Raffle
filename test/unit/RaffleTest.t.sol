@@ -180,4 +180,16 @@ contract RaffleTest is Test {
         assert(uint256(requestId) > 0);
         assert(uint256(raffleState) == 1);
     }
+
+    /*//////////////////////////////////////////////////////////////////
+                        FULLFILL RANDOM WORDS
+    //////////////////////////////////////////////////////////////////*/
+
+    function testFullfillRandomWordsCanOnlyBeCalledAfterPerformUpkeep(uint256 randomRequestId) public raffleEntered {
+        // Arrange
+        vm.expectRevert(VRFCoordinatorV2_5Mock.InvalidRequest.selector);
+        VRFCoordinatorV2_5Mock(vrfCoordinator).fulfillRandomWords(0, address(raffle));
+    } // intro to fuzz testing where randomRequestId is any uint256 allowing us to test edge cases.
+
+    
 }
