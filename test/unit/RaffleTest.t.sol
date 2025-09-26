@@ -9,7 +9,7 @@ import {VRFCoordinatorV2_5Mock} from "@chainlink/contracts/src/v0.8/vrf/mocks/VR
 import {CodeConstants} from "../../script/HelperConfig.s.sol";
 import {Vm} from "forge-std/Vm.sol";
 
-contract RaffleTest is Test {
+contract RaffleTest is CodeConstantsTest {
 
     /* ////////////////////////////////////////////////
                           Events 
@@ -184,6 +184,13 @@ contract RaffleTest is Test {
     /*//////////////////////////////////////////////////////////////////
                         FULLFILL RANDOM WORDS
     //////////////////////////////////////////////////////////////////*/
+
+    modifier skipFork() {
+        if (block.chainid != LOCAL_CHAIN_ID) {
+            return;
+        }
+        _;
+    }
 
     function testFullfillRandomWordsCanOnlyBeCalledAfterPerformUpkeep(uint256 randomRequestId) public raffleEntered {
         // Arrange
