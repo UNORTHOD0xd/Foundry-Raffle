@@ -9,7 +9,7 @@ import {VRFCoordinatorV2_5Mock} from "@chainlink/contracts/src/v0.8/vrf/mocks/VR
 import {CodeConstants} from "../../script/HelperConfig.s.sol";
 import {Vm} from "forge-std/Vm.sol";
 
-contract RaffleTest is CodeConstantsTest {
+contract RaffleTest is CodeConstants, Test {
 
     /* ////////////////////////////////////////////////
                           Events 
@@ -27,7 +27,7 @@ contract RaffleTest is CodeConstantsTest {
     uint256 public interval;
     address public vrfCoordinator;
     bytes32 public gasLane;
-    uint64 public subscriptionId;
+    uint256 public subscriptionId;
     uint32 public callbackGasLimit;
 
     address public PLAYER = makeAddr("player");

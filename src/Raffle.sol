@@ -50,7 +50,7 @@ contract Raffle is VRFConsumerBaseV2Plus {
     uint256 private immutable I_ENTRANCE_FEE;
     uint256 private immutable I_INTERVAL;
     bytes32 private immutable I_KEY_HASH;
-    uint64 private immutable I_SUBSCRIPTION_ID;
+    uint256 private immutable I_SUBSCRIPTION_ID;
     uint32 private immutable I_CALLBACK_GASLIMIT;
     address payable[] private s_players;
     uint256 private s_lastTimeStamp;
@@ -68,7 +68,7 @@ constructor(uint256 enteranceFee,
             uint256 interval, 
             address vrfCoordinatorV2,
             bytes32 gasLane,
-            uint64 subscriptionId,
+            uint256 subscriptionId,
             uint32 callbackGaslimit)
         VRFConsumerBaseV2Plus(vrfCoordinatorV2) {
         I_ENTRANCE_FEE = enteranceFee;
